@@ -85,10 +85,29 @@ func main() {
 			flag.PrintDefaults()
 			os.Exit(2)
 		}
-		if err := setMP4CreationTimeFromGPX(flag.Arg(0), flag.Arg(1)); err != nil {
+		gpxPath, mp4Path, ok := splitGPXMP4Args(flag.Arg(0), flag.Arg(1))
+		if !ok {
+			fmt.Fprintln(os.Stderr, "usage: osv2gpx -mp4time [flags] file.gpx file.mp4")
+			flag.PrintDefaults()
+			os.Exit(2)
+		}
+		if err := setMP4CreationTimeFromGPX(gpxPath, mp4Path); err != nil {
 			fatal(err)
 		}
 		return
+	}
+
+	if flag.NArg() == 2 {
+		if gpxPath, mp4Path, ok := splitGPXMP4Args(flag.Arg(0), flag.Arg(1)); ok {
+			if *output != "" {
+				fmt.Fprintln(os.Stderr, "error: -o cannot be used when setting MP4 creation time")
+				os.Exit(2)
+			}
+			if err := setMP4CreationTimeFromGPX(gpxPath, mp4Path); err != nil {
+				fatal(err)
+			}
+			return
+		}
 	}
 
 	if flag.NArg() < 1 {
@@ -105,6 +124,19 @@ func main() {
 		if err := convertOSVToGPX(path, *output, uint32(*trackID), *timeOffsetMS); err != nil {
 			fatal(fmt.Errorf("%s: %w", path, err))
 		}
+	}
+}
+
+func splitGPXMP4Args(a, b string) (string, string, bool) {
+	aExt := strings.ToLower(filepath.Ext(a))
+	bExt := strings.ToLower(filepath.Ext(b))
+	switch {
+	case aExt == ".gpx" && bExt == ".mp4":
+		return a, b, true
+	case aExt == ".mp4" && bExt == ".gpx":
+		return b, a, true
+	default:
+		return "", "", false
 	}
 }
 

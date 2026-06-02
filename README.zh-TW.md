@@ -62,6 +62,12 @@ go build -o osv2gpx.exe .
 .\osv2gpx.exe -mp4time track.gpx video.mp4
 ```
 
+也可以不加 `-mp4time`，直接傳入一個 MP4 和一個 GPX：
+
+```powershell
+.\osv2gpx.exe video.mp4 track.gpx
+```
+
 ## 參數
 
 - `-o`：輸出 GPX 路徑。預設為輸入檔名加上 `.gpx` 副檔名。

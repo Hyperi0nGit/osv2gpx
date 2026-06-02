@@ -65,6 +65,12 @@ Set an MP4 QuickTime `creation_time` from the first timestamp in a GPX:
 .\osv2gpx.exe -mp4time track.gpx video.mp4
 ```
 
+You can also pass one MP4 and one GPX without `-mp4time`:
+
+```powershell
+.\osv2gpx.exe video.mp4 track.gpx
+```
+
 ## Options
 
 - `-o`: output GPX path. Defaults to the input filename with `.gpx` extension.
