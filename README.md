@@ -15,7 +15,6 @@ the GPS telemetry stored in `djmd` protobuf metadata samples, and writes a GPX
 - Extracts latitude, longitude, and absolute altitude from `djmd` protobuf
   metadata.
 - Preserves every GPS metadata sample; no point deduplication is performed.
-- Supports an optional timestamp offset for matching DJI SRT millisecond timing.
 
 ## Requirements
 
@@ -41,31 +40,13 @@ Generate one GPX file per OSV input:
 .\osv2gpx.exe flight1.OSV flight2.OSV flight3.OSV
 ```
 
-Specify the output path:
-
-```powershell
-.\osv2gpx.exe -o track.gpx flight.OSV
-```
-
-Apply a timestamp offset when you need to align GPX timestamps with a DJI SRT:
-
-```powershell
-.\osv2gpx.exe -time-offset-ms 647 -o track.gpx flight.OSV
-```
-
 Use a specific metadata track if auto-detection is not enough:
 
 ```powershell
-.\osv2gpx.exe -track 3 -o track.gpx flight.OSV
+.\osv2gpx.exe -track 3 flight.OSV
 ```
 
 Set an MP4 QuickTime `creation_time` from the first timestamp in a GPX:
-
-```powershell
-.\osv2gpx.exe -mp4time track.gpx video.mp4
-```
-
-You can also pass one MP4 and one GPX without `-mp4time`:
 
 ```powershell
 .\osv2gpx.exe video.mp4 track.gpx
@@ -73,14 +54,8 @@ You can also pass one MP4 and one GPX without `-mp4time`:
 
 ## Options
 
-- `-o`: output GPX path. Defaults to the input filename with `.gpx` extension.
-  Can only be used with one OSV input.
 - `-track`: metadata track ID to read. Defaults to the first `djmd` metadata
   track found in the OSV.
-- `-time-offset-ms`: milliseconds to add to all GPX timestamps.
-- `-mp4time`: read the first `<time>` from a GPX and write it to
-  the MP4 `CreateDate`, `TrackCreateDate`, and `MediaCreateDate` fields.
-
 ## Output
 
 The GPX output contains one track segment with `trkpt` entries:
@@ -118,11 +93,9 @@ MP4 `creation_time` is second-precision, while DJI SRT files may include
 millisecond timestamps. For the tested sample:
 
 ```text
-SRT first time:              2026-05-27T09:23:16.647Z
-OSV first sample before fix: 2026-05-27T09:23:16.000Z
+SRT first time:        2026-05-27T09:23:16.647Z
+OSV first sample time: 2026-05-27T09:23:16.000Z
 ```
-
-Use `-time-offset-ms 647` to align GPX timestamps with that SRT.
 
 ## Converted MP4 Limitation
 
@@ -131,5 +104,5 @@ DJI `djmd`, `dbgi`, or `camd` metadata tracks. If those metadata tracks are
 missing, GPS cannot be extracted. Use the original OSV whenever possible.
 
 If a converted MP4 lost its QuickTime creation metadata but you already have a
-matching GPX, use `-mp4time` to copy the GPX's first timestamp into
-the MP4 so upload tools can align the video and GPS time ranges.
+matching GPX, pass the MP4 and GPX together to copy the GPX's first timestamp
+into the MP4 so upload tools can align the video and GPS time ranges.

@@ -74,35 +74,11 @@ type protoField struct {
 
 func main() {
 	trackID := flag.Uint("track", 0, "metadata track id to use; defaults to first djmd track")
-	output := flag.String("o", "", "output GPX path; default is input filename with .gpx extension")
-	timeOffsetMS := flag.Int("time-offset-ms", 0, "milliseconds to add to MP4 sample time when writing GPX")
-	mp4Time := flag.Bool("mp4time", false, "set an MP4 creation_time from the first timestamp in a GPX; args: file.gpx file.mp4")
+	flag.Usage = printUsage
 	flag.Parse()
-
-	if *mp4Time {
-		if flag.NArg() != 2 {
-			fmt.Fprintln(os.Stderr, "usage: osv2gpx -mp4time [flags] file.gpx file.mp4")
-			flag.PrintDefaults()
-			os.Exit(2)
-		}
-		gpxPath, mp4Path, ok := splitGPXMP4Args(flag.Arg(0), flag.Arg(1))
-		if !ok {
-			fmt.Fprintln(os.Stderr, "usage: osv2gpx -mp4time [flags] file.gpx file.mp4")
-			flag.PrintDefaults()
-			os.Exit(2)
-		}
-		if err := setMP4CreationTimeFromGPX(gpxPath, mp4Path); err != nil {
-			fatal(err)
-		}
-		return
-	}
 
 	if flag.NArg() == 2 {
 		if gpxPath, mp4Path, ok := splitGPXMP4Args(flag.Arg(0), flag.Arg(1)); ok {
-			if *output != "" {
-				fmt.Fprintln(os.Stderr, "error: -o cannot be used when setting MP4 creation time")
-				os.Exit(2)
-			}
 			if err := setMP4CreationTimeFromGPX(gpxPath, mp4Path); err != nil {
 				fatal(err)
 			}
@@ -111,20 +87,24 @@ func main() {
 	}
 
 	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: osv2gpx [flags] file.OSV [file2.OSV ...]")
-		flag.PrintDefaults()
+		flag.Usage()
 		os.Exit(2)
 	}
-	if *output != "" && flag.NArg() > 1 {
-		fmt.Fprintln(os.Stderr, "error: -o can only be used with one OSV input")
-		os.Exit(2)
-	}
-
 	for _, path := range flag.Args() {
-		if err := convertOSVToGPX(path, *output, uint32(*trackID), *timeOffsetMS); err != nil {
+		if err := convertOSVToGPX(path, uint32(*trackID)); err != nil {
 			fatal(fmt.Errorf("%s: %w", path, err))
 		}
 	}
+}
+
+func printUsage() {
+	fmt.Fprintln(os.Stderr, "usage:")
+	fmt.Fprintln(os.Stderr, "  osv2gpx [flags] flight.OSV               write flight.gpx next to the OSV")
+	fmt.Fprintln(os.Stderr, "  osv2gpx [flags] flight1.OSV flight2.OSV  write one .gpx file for each OSV")
+	fmt.Fprintln(os.Stderr, "  osv2gpx video.mp4 track.gpx              set MP4 creation time from first GPX time")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "options:")
+	flag.PrintDefaults()
 }
 
 func splitGPXMP4Args(a, b string) (string, string, bool) {
@@ -140,7 +120,7 @@ func splitGPXMP4Args(a, b string) (string, string, bool) {
 	}
 }
 
-func convertOSVToGPX(path, outputPath string, trackID uint32, timeOffsetMS int) error {
+func convertOSVToGPX(path string, trackID uint32) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -160,7 +140,7 @@ func convertOSVToGPX(path, outputPath string, trackID uint32, timeOffsetMS int) 
 	if err != nil {
 		return err
 	}
-	points, err := extractGPSPoints(f, t, creationTime.Add(time.Duration(timeOffsetMS)*time.Millisecond))
+	points, err := extractGPSPoints(f, t, creationTime)
 	if err != nil {
 		return err
 	}
@@ -168,9 +148,7 @@ func convertOSVToGPX(path, outputPath string, trackID uint32, timeOffsetMS int) 
 		return errors.New("no GPS points found in OSV protobuf metadata")
 	}
 
-	if outputPath == "" {
-		outputPath = strings.TrimSuffix(path, filepath.Ext(path)) + ".gpx"
-	}
+	outputPath := strings.TrimSuffix(path, filepath.Ext(path)) + ".gpx"
 	outFile, err := os.Create(outputPath)
 	if err != nil {
 		return err

@@ -12,7 +12,6 @@
 - 將 OSV 視為 MP4/ISOBMFF 容器讀取。
 - 從 `djmd` protobuf metadata 抽取 latitude、longitude 與 absolute altitude。
 - 保留每個 GPS metadata sample；不做點位去重。
-- 支援選擇性 timestamp offset，方便對齊 DJI SRT 的毫秒時間。
 
 ## 需求
 
@@ -38,31 +37,13 @@ go build -o osv2gpx.exe .
 .\osv2gpx.exe flight1.OSV flight2.OSV flight3.OSV
 ```
 
-指定輸出路徑：
-
-```powershell
-.\osv2gpx.exe -o track.gpx flight.OSV
-```
-
-若需要讓 GPX 時間與 DJI SRT 對齊，可套用 timestamp offset：
-
-```powershell
-.\osv2gpx.exe -time-offset-ms 647 -o track.gpx flight.OSV
-```
-
 若自動偵測 metadata track 不夠，可指定 track：
 
 ```powershell
-.\osv2gpx.exe -track 3 -o track.gpx flight.OSV
+.\osv2gpx.exe -track 3 flight.OSV
 ```
 
 從 GPX 第一個時間寫入 MP4 的 QuickTime `creation_time`：
-
-```powershell
-.\osv2gpx.exe -mp4time track.gpx video.mp4
-```
-
-也可以不加 `-mp4time`，直接傳入一個 MP4 和一個 GPX：
 
 ```powershell
 .\osv2gpx.exe video.mp4 track.gpx
@@ -70,14 +51,8 @@ go build -o osv2gpx.exe .
 
 ## 參數
 
-- `-o`：輸出 GPX 路徑。預設為輸入檔名加上 `.gpx` 副檔名。
-  只能搭配單一 OSV 輸入使用。
 - `-track`：要讀取的 metadata track ID。預設使用 OSV 中第一個 `djmd`
   metadata track。
-- `-time-offset-ms`：將所有 GPX 時間加上指定毫秒偏移。
-- `-mp4time`：讀取 GPX 第一個 `<time>`，並寫入 MP4 的
-  `CreateDate`、`TrackCreateDate` 與 `MediaCreateDate`。
-
 ## 輸出
 
 GPX 會包含一個 track segment，內含多個 `trkpt`：
@@ -111,16 +86,14 @@ relative altitude:          field 5 -> field 1, fixed32 float32 millimeters
 MP4 `creation_time` 只有秒級精度，而 DJI SRT 可能包含毫秒級時間。以測試樣本來說：
 
 ```text
-SRT 第一筆時間：             2026-05-27T09:23:16.647Z
-OSV 第一個 sample 未校正時間：2026-05-27T09:23:16.000Z
+SRT 第一筆時間：       2026-05-27T09:23:16.647Z
+OSV 第一個 sample 時間：2026-05-27T09:23:16.000Z
 ```
-
-使用 `-time-offset-ms 647` 可讓 GPX 時間與該 SRT 對齊。
 
 ## 轉檔 MP4 限制
 
 轉檔後的 MP4 常只保留 video/audio tracks，不一定會保留 DJI `djmd`、`dbgi` 或 `camd` metadata tracks。如果 metadata tracks 已遺失，就無法抽取 GPS。請盡量使用原始 OSV。
 
-若轉檔後 MP4 遺失 QuickTime creation metadata，但已經有對應 GPX，可使用
-`-mp4time` 將 GPX 第一個時間寫入 MP4，讓上傳工具能對齊影片與
-GPS 的時間範圍。
+若轉檔後 MP4 遺失 QuickTime creation metadata，但已經有對應 GPX，可同時
+傳入 MP4 與 GPX，將 GPX 第一個時間寫入 MP4，讓上傳工具能對齊影片與 GPS
+的時間範圍。
