@@ -28,16 +28,20 @@ jobs:
         include:
           - goos: windows
             goarch: amd64
-            output: osv2gpx-windows-amd64.exe
+            output: osv2gpx.exe
+            archive: osv2gpx-windows-amd64.zip
           - goos: darwin
             goarch: amd64
-            output: osv2gpx-darwin-amd64
+            output: osv2gpx
+            archive: osv2gpx-darwin-amd64.tar.gz
           - goos: darwin
             goarch: arm64
-            output: osv2gpx-darwin-arm64
+            output: osv2gpx
+            archive: osv2gpx-darwin-arm64.tar.gz
           - goos: linux
             goarch: amd64
-            output: osv2gpx-linux-amd64
+            output: osv2gpx
+            archive: osv2gpx-linux-amd64.tar.gz
 
     steps:
       - uses: actions/checkout@v6
@@ -53,7 +57,16 @@ jobs:
           CGO_ENABLED: "0"
         run: go build -trimpath -ldflags="-s -w" -o "${{ matrix.output }}" .
 
+      - name: Package binary
+        shell: bash
+        run: |
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+            zip "${{ matrix.archive }}" "${{ matrix.output }}"
+          else
+            tar -czf "${{ matrix.archive }}" "${{ matrix.output }}"
+          fi
+
       - name: Upload release asset
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.ref_name }}" "${{ matrix.output }}" --clobber
+        run: gh release upload "${{ github.ref_name }}" "${{ matrix.archive }}" --clobber
