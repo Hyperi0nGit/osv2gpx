@@ -30,6 +30,9 @@ First, generate `flight.gpx` from the original `flight.OSV`:
 osv2gpx flight.OSV
 ```
 
+On Windows, you can also drag an OSV file onto `osv2gpx.exe`. The GPX file is
+created in the same folder as the OSV file.
+
 Then, write the GPX first timestamp into the DJI Studio exported MP4:
 
 ```powershell
@@ -52,6 +55,7 @@ osv2gpx -track 3 flight.OSV
 
 - `-track`: metadata track ID to read. Defaults to the first `djmd` metadata
   track found in the OSV.
+
 ## Output
 
 The GPX output contains one track segment with `trkpt` entries:

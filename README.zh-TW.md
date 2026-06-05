@@ -28,6 +28,9 @@ go build -o osv2gpx.exe .
 osv2gpx flight.OSV
 ```
 
+在 Windows 上，也可以直接將 OSV 檔拖曳到 `osv2gpx.exe`。GPX 檔會產生在
+OSV 檔所在的同一個目錄。
+
 再將 GPX 第一個時間寫入 DJI Studio 匯出的 MP4：
 
 ```powershell
@@ -50,6 +53,7 @@ osv2gpx -track 3 flight.OSV
 
 - `-track`：要讀取的 metadata track ID。預設使用 OSV 中第一個 `djmd`
   metadata track。
+
 ## 輸出
 
 GPX 會包含一個 track segment，內含多個 `trkpt`：
