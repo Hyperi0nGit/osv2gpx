@@ -21,46 +21,47 @@ jobs:
 
   build:
     needs: create-release
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - goos: windows
-            goarch: amd64
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: osv2gpx.exe
             output: osv2gpx.exe
             archive: osv2gpx-windows-amd64.zip
-          - goos: darwin
-            goarch: amd64
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            binary: osv2gpx
             output: osv2gpx
             archive: osv2gpx-darwin-amd64.tar.gz
-          - goos: darwin
-            goarch: arm64
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            binary: osv2gpx
             output: osv2gpx
             archive: osv2gpx-darwin-arm64.tar.gz
-          - goos: linux
-            goarch: amd64
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: osv2gpx
             output: osv2gpx
             archive: osv2gpx-linux-amd64.tar.gz
 
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          go-version-file: go.mod
+          targets: ${{ matrix.target }}
 
       - name: Build binary
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: "0"
-        run: go build -trimpath -ldflags="-s -w" -o "${{ matrix.output }}" .
+        run: cargo build --release --locked --target "${{ matrix.target }}"
 
       - name: Package binary
         shell: bash
         run: |
-          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "${{ matrix.output }}"
+          if [[ "${{ matrix.runner }}" == windows-* ]]; then
             zip "${{ matrix.archive }}" "${{ matrix.output }}"
           else
             tar -czf "${{ matrix.archive }}" "${{ matrix.output }}"

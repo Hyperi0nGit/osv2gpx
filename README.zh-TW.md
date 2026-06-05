@@ -16,9 +16,14 @@
 
 ## 編譯
 
+先安裝 stable [Rust toolchain](https://rustup.rs/)，再編譯 release 執行檔：
+
 ```powershell
-go build -o osv2gpx.exe .
+cargo build --release --locked
 ```
+
+Windows 執行檔會產生在 `target\release\osv2gpx.exe`；macOS 與 Linux
+執行檔會產生在 `target/release/osv2gpx`。
 
 ## 使用方式
 

@@ -18,9 +18,15 @@ the video and GPS track.
 
 ## Build
 
+Install the stable [Rust toolchain](https://rustup.rs/), then build the release
+binary:
+
 ```powershell
-go build -o osv2gpx.exe .
+cargo build --release --locked
 ```
+
+The binary is written to `target\release\osv2gpx.exe` on Windows and
+`target/release/osv2gpx` on macOS and Linux.
 
 ## Usage
 

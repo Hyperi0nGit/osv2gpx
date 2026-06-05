@@ -1,0 +1,8 @@
+[package]
+name = "osv2gpx"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+chrono = "0.4"
+quick-xml = "0.38"
