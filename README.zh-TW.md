@@ -39,17 +39,20 @@ OSV 檔所在的同一個目錄。
 osv2gpx flight.mp4 flight.gpx
 ```
 
-從匯出的 MP4 每秒抽出一張 JPG 後，將 GPS EXIF 與 GPano XMP 寫入 JPG：
+從匯出的 MP4 每秒產生一張 JPG，並將 GPS EXIF 與 GPano XMP 寫入這些 JPG：
 
 ```powershell
-mkdir .\jpg-dir
-ffmpeg -i flight.mp4 -vf fps=1 -q:v 2 .\jpg-dir\frame_%06d.jpg
-osv2gpx .\jpg-dir flight.gpx
+mkdir jpg-dir
+ffmpeg -i flight.mp4 -vf fps=1 -q:v 2 jpg-dir\frame_%06d.jpg
+osv2gpx jpg-dir flight.gpx
 ```
 
-JPG 會依檔名排序處理。第一張使用 GPX 第一個時間，第二張使用一秒後的時間，
-依此類推；GPS 位置會從 GPX 軌跡插值取得。GPano XMP 會使用圖片實際寬高，
-將每張 JPG 標記為完整 equirectangular 全景圖。
+`osv2gpx` 會依檔名排序處理產生的 JPG。第一張使用 GPX 第一個時間，第二張
+使用一秒後的時間，依此類推；GPS 位置會從 GPX 軌跡插值取得。GPano XMP 會
+使用圖片實際寬高，將每張 JPG 標記為完整 equirectangular 全景圖。
+產生的 JPG 可透過 Google Street View Publish API 上傳，例如使用
+[stviewpub](https://znbang.github.io/stviewpub/)
+（[專案](https://github.com/znbang/stviewpub)）。
 
 為每個 OSV 輸入各產生一個 GPX 檔：
 

@@ -42,19 +42,22 @@ Then, write the GPX first timestamp into the DJI Studio exported MP4:
 osv2gpx flight.mp4 flight.gpx
 ```
 
-After extracting one JPG per second from the exported MP4, write GPS EXIF and
-GPano XMP to the JPG files:
+Generate one JPG per second from the exported MP4 and write GPS EXIF plus GPano
+XMP to those JPG files:
 
 ```powershell
-mkdir .\jpg-dir
-ffmpeg -i flight.mp4 -vf fps=1 -q:v 2 .\jpg-dir\frame_%06d.jpg
-osv2gpx .\jpg-dir flight.gpx
+mkdir jpg-dir
+ffmpeg -i flight.mp4 -vf fps=1 -q:v 2 jpg-dir\frame_%06d.jpg
+osv2gpx jpg-dir flight.gpx
 ```
 
-JPG files are processed by filename order. The first JPG uses the first GPX
-time, the second JPG uses one second after that, and so on. GPS positions are
-interpolated from the GPX track. The GPano XMP marks each JPG as a full
-equirectangular panorama using the image's actual width and height.
+`osv2gpx` processes the generated JPG files by filename order. The first JPG
+uses the first GPX time, the second JPG uses one second after that, and so on.
+GPS positions are interpolated from the GPX track. The GPano XMP marks each JPG
+as a full equirectangular panorama using the image's actual width and height.
+The generated JPG files can be uploaded with the Google Street View Publish API,
+for example by using [stviewpub](https://znbang.github.io/stviewpub/)
+([project](https://github.com/znbang/stviewpub)).
 
 Generate one GPX file per OSV input:
 
