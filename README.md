@@ -25,9 +25,6 @@ binary:
 cargo build --release --locked
 ```
 
-The binary is written to `target\release\osv2gpx.exe` on Windows and
-`target/release/osv2gpx` on macOS and Linux.
-
 ## Usage
 
 First, generate `flight.gpx` from the original `flight.OSV`:
@@ -44,6 +41,20 @@ Then, write the GPX first timestamp into the DJI Studio exported MP4:
 ```powershell
 osv2gpx flight.mp4 flight.gpx
 ```
+
+After extracting one JPG per second from the exported MP4, write GPS EXIF and
+GPano XMP to the JPG files:
+
+```powershell
+mkdir .\jpg-dir
+ffmpeg -i flight.mp4 -vf fps=1 -q:v 2 .\jpg-dir\frame_%06d.jpg
+osv2gpx .\jpg-dir flight.gpx
+```
+
+JPG files are processed by filename order. The first JPG uses the first GPX
+time, the second JPG uses one second after that, and so on. GPS positions are
+interpolated from the GPX track. The GPano XMP marks each JPG as a full
+equirectangular panorama using the image's actual width and height.
 
 Generate one GPX file per OSV input:
 

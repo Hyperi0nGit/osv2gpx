@@ -1,10 +1,11 @@
 pub mod gps;
 pub mod gpx;
+pub mod jpeg;
 pub mod mp4;
 
 use chrono::Duration;
 use std::error::Error;
-use std::fs::File;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 pub type AppResult<T> = Result<T, Box<dyn Error>>;
@@ -59,8 +60,58 @@ pub fn set_mp4_creation_time_from_gpx(gpx_path: &Path, mp4_path: &Path) -> AppRe
     Ok(())
 }
 
+pub fn geotag_jpegs_with_gpx(dir_path: &Path, gpx_path: &Path) -> AppResult<()> {
+    let points = gpx::read_gpx_points(gpx_path)?;
+    if points.is_empty() {
+        return Err("no GPX track points found".into());
+    }
+
+    let mut jpg_paths = Vec::new();
+    for entry in fs::read_dir(dir_path)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() && is_jpeg_path(&path) {
+            jpg_paths.push(path);
+        }
+    }
+    jpg_paths.sort_by_key(|path| path.file_name().map(|name| name.to_os_string()));
+
+    if jpg_paths.is_empty() {
+        return Err(format!("no JPG files found in {}", dir_path.display()).into());
+    }
+
+    let start = points[0].time;
+    for (idx, jpg_path) in jpg_paths.iter().enumerate() {
+        let image_time = start + Duration::seconds(idx as i64);
+        let point = gpx::interpolate_gps_point(&points, image_time).ok_or_else(|| {
+            format!(
+                "{} time {} is outside GPX range",
+                jpg_path.display(),
+                image_time.format("%Y-%m-%dT%H:%M:%SZ")
+            )
+        })?;
+        jpeg::write_gps_exif(jpg_path, &point)?;
+    }
+
+    eprintln!(
+        "wrote GPS EXIF and GPano XMP to {} JPG files in {} from {}",
+        jpg_paths.len(),
+        dir_path.display(),
+        gpx_path.display()
+    );
+    Ok(())
+}
+
 fn output_gpx_path(path: &Path) -> PathBuf {
     let mut out = path.to_path_buf();
     out.set_extension("gpx");
     out
+}
+
+fn is_jpeg_path(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .map(|ext| ext.to_string_lossy().to_lowercase()),
+        Some(ext) if ext == "jpg" || ext == "jpeg"
+    )
 }

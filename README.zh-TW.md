@@ -22,9 +22,6 @@
 cargo build --release --locked
 ```
 
-Windows 執行檔會產生在 `target\release\osv2gpx.exe`；macOS 與 Linux
-執行檔會產生在 `target/release/osv2gpx`。
-
 ## 使用方式
 
 先從原始 `flight.OSV` 產生 `flight.gpx`：
@@ -41,6 +38,18 @@ OSV 檔所在的同一個目錄。
 ```powershell
 osv2gpx flight.mp4 flight.gpx
 ```
+
+從匯出的 MP4 每秒抽出一張 JPG 後，將 GPS EXIF 與 GPano XMP 寫入 JPG：
+
+```powershell
+mkdir .\jpg-dir
+ffmpeg -i flight.mp4 -vf fps=1 -q:v 2 .\jpg-dir\frame_%06d.jpg
+osv2gpx .\jpg-dir flight.gpx
+```
+
+JPG 會依檔名排序處理。第一張使用 GPX 第一個時間，第二張使用一秒後的時間，
+依此類推；GPS 位置會從 GPX 軌跡插值取得。GPano XMP 會使用圖片實際寬高，
+將每張 JPG 標記為完整 equirectangular 全景圖。
 
 為每個 OSV 輸入各產生一個 GPX 檔：
 

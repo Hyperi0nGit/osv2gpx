@@ -40,6 +40,9 @@ fn run() -> osv2gpx::AppResult<()> {
         if let Some((gpx_path, mp4_path)) = split_gpx_mp4_args(&paths[0], &paths[1]) {
             return osv2gpx::set_mp4_creation_time_from_gpx(&gpx_path, &mp4_path);
         }
+        if let Some((dir_path, gpx_path)) = split_dir_gpx_args(&paths[0], &paths[1]) {
+            return osv2gpx::geotag_jpegs_with_gpx(&dir_path, &gpx_path);
+        }
     }
 
     if paths.is_empty() {
@@ -63,10 +66,23 @@ fn print_usage() {
     eprintln!(
         "  osv2gpx video.mp4 track.gpx              set MP4 creation time from first GPX time"
     );
+    eprintln!(
+        "  osv2gpx jpg-dir track.gpx                write GPS EXIF and GPano XMP to JPG files"
+    );
     eprintln!();
     eprintln!("options:");
     eprintln!("  -track uint");
     eprintln!("        metadata track id to use; defaults to first djmd track");
+}
+
+fn split_dir_gpx_args(a: &Path, b: &Path) -> Option<(PathBuf, PathBuf)> {
+    let a_ext = lower_ext(a);
+    let b_ext = lower_ext(b);
+    match (a.is_dir(), a_ext.as_str(), b.is_dir(), b_ext.as_str()) {
+        (true, _, false, "gpx") => Some((a.to_path_buf(), b.to_path_buf())),
+        (false, "gpx", true, _) => Some((b.to_path_buf(), a.to_path_buf())),
+        _ => None,
+    }
 }
 
 fn split_gpx_mp4_args(a: &Path, b: &Path) -> Option<(PathBuf, PathBuf)> {

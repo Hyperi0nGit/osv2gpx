@@ -82,6 +82,112 @@ pub fn first_gpx_time(path: &Path) -> GpxResult<DateTime<Utc>> {
     Err("no GPX time element found".into())
 }
 
+pub fn read_gpx_points(path: &Path) -> GpxResult<Vec<GpsPoint>> {
+    let file = File::open(path)?;
+    let mut reader = Reader::from_reader(BufReader::new(file));
+    reader.config_mut().trim_text(true);
+    let mut buf = Vec::new();
+    let mut points = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Eof => break,
+            Event::Start(start) if is_local_name(start.name().as_ref(), b"trkpt") => {
+                let mut lat = None;
+                let mut lon = None;
+                for attr in start.attributes() {
+                    let attr = attr?;
+                    let value = attr.decode_and_unescape_value(reader.decoder())?;
+                    match attr.key.as_ref() {
+                        b"lat" => lat = Some(value.parse::<f64>()?),
+                        b"lon" => lon = Some(value.parse::<f64>()?),
+                        _ => {}
+                    }
+                }
+                let (abs_alt, time) = read_track_point_body(&mut reader)?;
+                if let (Some(lat), Some(lon), Some(time)) = (lat, lon, time) {
+                    points.push(GpsPoint {
+                        lat,
+                        lon,
+                        abs_alt: abs_alt.unwrap_or(0.0),
+                        rel_alt: 0.0,
+                        time,
+                    });
+                }
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    points.sort_by_key(|point| point.time);
+    Ok(points)
+}
+
+pub fn interpolate_gps_point(points: &[GpsPoint], time: DateTime<Utc>) -> Option<GpsPoint> {
+    if points.is_empty() {
+        return None;
+    }
+    if time < points.first()?.time || time > points.last()?.time {
+        return None;
+    }
+
+    match points.binary_search_by_key(&time, |point| point.time) {
+        Ok(idx) => return Some(points[idx].clone()),
+        Err(idx) if idx == 0 || idx >= points.len() => return None,
+        Err(idx) => {
+            let before = &points[idx - 1];
+            let after = &points[idx];
+            let total = after.time.signed_duration_since(before.time);
+            let elapsed = time.signed_duration_since(before.time);
+            let total_ns = total.num_nanoseconds()? as f64;
+            if total_ns == 0.0 {
+                return Some(before.clone());
+            }
+            let ratio = elapsed.num_nanoseconds()? as f64 / total_ns;
+            Some(GpsPoint {
+                lat: lerp(before.lat, after.lat, ratio),
+                lon: lerp(before.lon, after.lon, ratio),
+                abs_alt: lerp(before.abs_alt, after.abs_alt, ratio),
+                rel_alt: lerp(before.rel_alt, after.rel_alt, ratio),
+                time,
+            })
+        }
+    }
+}
+
+fn read_track_point_body<R: std::io::BufRead>(
+    reader: &mut Reader<R>,
+) -> GpxResult<(Option<f64>, Option<DateTime<Utc>>)> {
+    let mut buf = Vec::new();
+    let mut ele = None;
+    let mut time = None;
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(start) if is_local_name(start.name().as_ref(), b"ele") => {
+                let value = read_element_text(reader, b"ele")?;
+                ele = Some(value.trim().parse::<f64>()?);
+            }
+            Event::Start(start) if is_local_name(start.name().as_ref(), b"time") => {
+                let value = read_element_text(reader, b"time")?;
+                let parsed = DateTime::parse_from_rfc3339(value.trim())
+                    .map_err(|err| format!("invalid GPX time {:?}: {}", value, err))?;
+                time = Some(parsed.with_timezone(&Utc));
+            }
+            Event::End(end) if is_local_name(end.name().as_ref(), b"trkpt") => {
+                return Ok((ele, time));
+            }
+            Event::Eof => return Err("unexpected EOF while reading GPX track point".into()),
+            _ => {}
+        }
+        buf.clear();
+    }
+}
+
+fn lerp(a: f64, b: f64, ratio: f64) -> f64 {
+    a + (b - a) * ratio
+}
+
 fn read_element_text<R: std::io::BufRead>(
     reader: &mut Reader<R>,
     end_name: &[u8],
@@ -102,4 +208,37 @@ fn read_element_text<R: std::io::BufRead>(
 
 fn is_local_name(name: &[u8], local: &[u8]) -> bool {
     name == local || name.rsplit(|byte| *byte == b':').next() == Some(local)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn interpolates_between_gpx_points() {
+        let t0 = Utc.with_ymd_and_hms(2026, 5, 27, 9, 23, 16).unwrap();
+        let t1 = Utc.with_ymd_and_hms(2026, 5, 27, 9, 23, 18).unwrap();
+        let points = vec![
+            GpsPoint {
+                lat: 24.0,
+                lon: 121.0,
+                abs_alt: 100.0,
+                rel_alt: 0.0,
+                time: t0,
+            },
+            GpsPoint {
+                lat: 26.0,
+                lon: 123.0,
+                abs_alt: 200.0,
+                rel_alt: 0.0,
+                time: t1,
+            },
+        ];
+
+        let point = interpolate_gps_point(&points, t0 + chrono::Duration::seconds(1)).unwrap();
+        assert_eq!(point.lat, 25.0);
+        assert_eq!(point.lon, 122.0);
+        assert_eq!(point.abs_alt, 150.0);
+    }
 }
