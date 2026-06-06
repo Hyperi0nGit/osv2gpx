@@ -57,15 +57,19 @@ jobs:
       - name: Build binary
         run: cargo build --release --locked --target "${{ matrix.target }}"
 
-      - name: Package binary
+      - name: Package Windows binary
+        if: startsWith(matrix.runner, 'windows')
+        shell: pwsh
+        run: |
+          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.binary }}" "${{ matrix.output }}"
+          Compress-Archive -Path "${{ matrix.output }}" -DestinationPath "${{ matrix.archive }}" -Force
+
+      - name: Package Unix binary
+        if: ${{ !startsWith(matrix.runner, 'windows') }}
         shell: bash
         run: |
           cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "${{ matrix.output }}"
-          if [[ "${{ matrix.runner }}" == windows-* ]]; then
-            zip "${{ matrix.archive }}" "${{ matrix.output }}"
-          else
-            tar -czf "${{ matrix.archive }}" "${{ matrix.output }}"
-          fi
+          tar -czf "${{ matrix.archive }}" "${{ matrix.output }}"
 
       - name: Upload release asset
         env:
