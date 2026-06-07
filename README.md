@@ -65,17 +65,6 @@ Generate one GPX file per OSV input:
 osv2gpx flight1.OSV flight2.OSV flight3.OSV
 ```
 
-Use a specific metadata track if auto-detection is not enough:
-
-```powershell
-osv2gpx -track 3 flight.OSV
-```
-
-## Options
-
-- `-track`: metadata track ID to read. Defaults to the first `djmd` metadata
-  track found in the OSV.
-
 ## Output
 
 The GPX output contains one track segment with `trkpt` entries:

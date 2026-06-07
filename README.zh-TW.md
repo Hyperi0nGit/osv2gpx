@@ -60,17 +60,6 @@ osv2gpx jpg-dir flight.gpx
 osv2gpx flight1.OSV flight2.OSV flight3.OSV
 ```
 
-若自動偵測 metadata track 不夠，可指定 track：
-
-```powershell
-osv2gpx -track 3 flight.OSV
-```
-
-## 參數
-
-- `-track`：要讀取的 metadata track ID。預設使用 OSV 中第一個 `djmd`
-  metadata track。
-
 ## 輸出
 
 GPX 會包含一個 track segment，內含多個 `trkpt`：

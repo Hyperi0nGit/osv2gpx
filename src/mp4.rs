@@ -99,7 +99,7 @@ pub fn select_track(tracks: &[Track], id: u32) -> Mp4Result<&Track> {
     tracks
         .iter()
         .find(|track| track.sample_entry == "djmd" || track.handler == "meta")
-        .ok_or_else(|| "no djmd/meta track found; pass -track explicitly".into())
+        .ok_or_else(|| "no djmd/meta track found".into())
 }
 
 pub fn samples_for_track(track: &Track) -> Mp4Result<Vec<SampleRef>> {

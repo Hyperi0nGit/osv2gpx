@@ -9,27 +9,13 @@ fn main() {
 }
 
 fn run() -> osv2gpx::AppResult<()> {
-    let mut track_id = 0u32;
     let mut paths = Vec::new();
-    let mut args = env::args().skip(1);
 
-    while let Some(arg) = args.next() {
+    for arg in env::args().skip(1) {
         match arg.as_str() {
             "-h" | "--help" => {
                 print_usage();
                 return Ok(());
-            }
-            "-track" => {
-                let value = args.next().ok_or("-track requires a value")?;
-                track_id = value
-                    .parse::<u32>()
-                    .map_err(|err| format!("invalid -track value {:?}: {}", value, err))?;
-            }
-            _ if arg.starts_with("-track=") => {
-                let value = arg.trim_start_matches("-track=");
-                track_id = value
-                    .parse::<u32>()
-                    .map_err(|err| format!("invalid -track value {:?}: {}", value, err))?;
             }
             _ if arg.starts_with('-') => return Err(format!("unknown flag: {}", arg).into()),
             _ => paths.push(PathBuf::from(arg)),
@@ -51,7 +37,7 @@ fn run() -> osv2gpx::AppResult<()> {
     }
 
     for path in paths {
-        if let Err(err) = osv2gpx::convert_osv_to_gpx(&path, track_id) {
+        if let Err(err) = osv2gpx::convert_osv_to_gpx(&path) {
             return Err(format!("{}: {}", path.display(), err).into());
         }
     }
@@ -61,18 +47,22 @@ fn run() -> osv2gpx::AppResult<()> {
 
 fn print_usage() {
     eprintln!("usage:");
-    eprintln!("  osv2gpx [flags] flight.OSV               write flight.gpx next to the OSV");
-    eprintln!("  osv2gpx [flags] flight1.OSV flight2.OSV  write one .gpx file for each OSV");
-    eprintln!(
-        "  osv2gpx video.mp4 track.gpx              set MP4 creation time from first GPX time"
-    );
-    eprintln!(
-        "  osv2gpx jpg-dir track.gpx                write GPS EXIF and GPano XMP to JPG files"
-    );
+    eprintln!("  osv2gpx flight.OSV");
+    eprintln!("      Extract GPS from a DJI OSV file and write flight.gpx next to it.");
     eprintln!();
-    eprintln!("options:");
-    eprintln!("  -track uint");
-    eprintln!("        metadata track id to use; defaults to first djmd track");
+    eprintln!("  osv2gpx flight1.OSV flight2.OSV");
+    eprintln!("      Convert each OSV file to a sibling GPX file.");
+    eprintln!();
+    eprintln!("  osv2gpx video.mp4 track.gpx");
+    eprintln!("      Set the MP4 creation time to the first timestamp in the GPX.");
+    eprintln!();
+    eprintln!("  osv2gpx jpg-dir track.gpx");
+    eprintln!("      Geotag one-JPG-per-second frames in filename order using GPX points.");
+    eprintln!();
+    eprintln!("ffmpeg one-JPG-per-second example:");
+    eprintln!("  mkdir jpg-dir");
+    eprintln!("  ffmpeg -i flight.mp4 -vf fps=1 -q:v 2 jpg-dir\\frame_%06d.jpg");
+    eprintln!("  osv2gpx jpg-dir flight.gpx");
 }
 
 fn split_dir_gpx_args(a: &Path, b: &Path) -> Option<(PathBuf, PathBuf)> {

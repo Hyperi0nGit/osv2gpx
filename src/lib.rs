@@ -10,11 +10,11 @@ use std::path::{Path, PathBuf};
 
 pub type AppResult<T> = Result<T, Box<dyn Error>>;
 
-pub fn convert_osv_to_gpx(path: &Path, track_id: u32) -> AppResult<()> {
+pub fn convert_osv_to_gpx(path: &Path) -> AppResult<()> {
     let mut file = File::open(path)?;
     let tracks = mp4::parse_tracks(&mut file)?;
     let creation_time = mp4::parse_movie_creation_time(&mut file)?;
-    let track = mp4::select_track(&tracks, track_id)?.clone();
+    let track = mp4::select_track(&tracks, 0)?.clone();
     let refs = mp4::samples_for_track(&track)?;
 
     let mut points = Vec::with_capacity(refs.len());
