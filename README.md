@@ -1,33 +1,23 @@
 # osv2gpx
 
-Prepare the GPX track and MP4 timing metadata needed for Google Street View.
+`osv2gpx` is a tool for OSV files recorded by DJI Avata 360. It prepares the
+GPX tracks, MP4 timing metadata, and JPG GPS metadata needed for Google Street
+View uploads.
 
-`osv2gpx` extracts a matching GPX track from the original DJI `.OSV` file and
-can write the GPX timestamp back to the exported MP4 so upload tools can align
-the video and GPS track.
+It is used to:
+
+1. Extract GPS data from an OSV file and save it as a GPX file.
+2. Add timestamp metadata to a DJI Studio exported MP4 using the GPX file.
+3. Add GPS metadata to JPG files generated from the MP4 with ffmpeg at one
+   frame per second, using the GPX file.
 
 [繁體中文](README.zh-TW.md)
 
-## Features
-
-- Converts DJI `.OSV` GPS telemetry to GPX.
-- Reads OSV as an MP4/ISOBMFF container.
-- Extracts latitude, longitude, and absolute altitude from `djmd` protobuf
-  metadata.
-- Preserves every GPS metadata sample; no point deduplication is performed.
-
-## Build
-
-Install the stable [Rust toolchain](https://rustup.rs/), then build the release
-binary:
-
-```powershell
-cargo build --release --locked
-```
-
 ## Usage
 
-First, generate `flight.gpx` from the original `flight.OSV`:
+### 1. Extract GPX from OSV
+
+Generate `flight.gpx` from the original `flight.OSV`:
 
 ```powershell
 osv2gpx flight.OSV
@@ -36,11 +26,21 @@ osv2gpx flight.OSV
 On Windows, you can also drag an OSV file onto `osv2gpx.exe`. The GPX file is
 created in the same folder as the OSV file.
 
-Then, write the GPX first timestamp into the DJI Studio exported MP4:
+Generate one GPX file per OSV input:
+
+```powershell
+osv2gpx flight1.OSV flight2.OSV flight3.OSV
+```
+
+### 2. Add Time Metadata to DJI Studio MP4
+
+Write the GPX first timestamp into the DJI Studio exported MP4:
 
 ```powershell
 osv2gpx flight.mp4 flight.gpx
 ```
+
+### 3. Add GPS Metadata to JPG Files
 
 Generate one JPG per second from the exported MP4 and write GPS EXIF plus GPano
 XMP to those JPG files:
@@ -59,12 +59,6 @@ The generated JPG files can be uploaded with the Google Street View Publish API,
 for example by using [stviewpub](https://znbang.github.io/stviewpub/)
 ([project](https://github.com/znbang/stviewpub)).
 
-Generate one GPX file per OSV input:
-
-```powershell
-osv2gpx flight1.OSV flight2.OSV flight3.OSV
-```
-
 ## Output
 
 The GPX output contains one track segment with `trkpt` entries:
@@ -78,60 +72,23 @@ The GPX output contains one track segment with `trkpt` entries:
 
 Elevation uses absolute altitude in meters.
 
-## Metadata Notes
+## Build
 
-The current DJI Avata 360 sample stores GPS in `djmd` protobuf samples. The
-payload advertises `dvtm_AVATA360.proto`, but the full `.proto` schema is not
-embedded in the file. The GPS extraction path was inferred from protobuf wire
-data and checked against the matching DJI SRT telemetry.
+Install the stable [Rust toolchain](https://rustup.rs/), then build the release
+binary:
 
-Because the schema is missing, the code reads the protobuf wire format directly.
-This pseudo `.proto` shows the inferred wire layout. Message and field names are
-descriptive placeholders, not official DJI names:
-
-```proto
-message Telemetry {
-  Location location = 4;
-  RelativeAltitudeWrapper relative_altitude = 5;
-}
-
-message Location {
-  Coordinates coordinates = 1;
-  uint64 absolute_altitude_mm = 2;
-}
-
-message Coordinates {
-  fixed64 reserved_or_unknown = 1;
-  fixed64 latitude = 2;   // decoded as float64
-  fixed64 longitude = 3;  // decoded as float64
-}
-
-message RelativeAltitudeWrapper {
-  fixed32 relative_altitude_mm = 1;  // decoded as float32
-}
+```powershell
+cargo build --release --locked
 ```
 
-Only latitude, longitude, and absolute altitude are written to GPX.
+## Notes
 
-## Timestamp Notes
-
-MP4 creation time fields use the QuickTime epoch (`1904-01-01T00:00:00Z`)
-and are second-precision, while DJI SRT files may include millisecond
-timestamps. For the tested sample:
-
-```text
-SRT first time:        2026-05-27T09:23:16.647Z
-OSV first sample time: 2026-05-27T09:23:16.000Z
-```
-
-## Exported MP4 Limitation
-
-MP4 files exported from DJI Studio contain only video/audio tracks and do not
-preserve DJI `djmd`, `dbgi`, or `camd` metadata tracks. Because those metadata
-tracks are missing, GPS cannot be extracted from the exported MP4. Use the
-original OSV to generate the GPX track.
-
-DJI Studio exported MP4 files also lack creation time metadata. If you already
-have a matching GPX, pass the MP4 and GPX together to copy the GPX's first
-timestamp into the MP4 creation time fields so upload tools can align the video
-and GPS time ranges.
+- Use the original OSV file to generate the GPX track. DJI Studio exported MP4
+  files do not preserve the DJI GPS metadata tracks.
+- DJI Studio exported MP4 files also lack creation time metadata. If you already
+  have a matching GPX file, `osv2gpx` can copy the GPX first timestamp into the
+  MP4 creation time fields.
+- GPX files contain latitude, longitude, absolute altitude, and timestamp data.
+  JPG positions are interpolated from the GPX track.
+- MP4 creation time fields are second-precision, while DJI SRT files may include
+  millisecond timestamps.
